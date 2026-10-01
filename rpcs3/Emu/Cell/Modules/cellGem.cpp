@@ -1912,7 +1912,7 @@ static inline void pos_to_gem_state(u32 gem_num, gem_config::gem_controller& con
 
 	gem_state->handle_pos[0] = gem_state->pos[0] - offset_world.x(); // Flip x offset
 	gem_state->handle_pos[1] = gem_state->pos[1] - offset_world.y(); // Flip y offset
-	gem_state->handle_pos[2] = gem_state->pos[2] + offset_world.z();
+	gem_state->handle_pos[2] = gem_state->pos[2] - offset_world.z(); // Flip z offset. The handle is behind the sphere when pointing at the camera.
 	gem_state->handle_pos[3] = 0.f;
 
 	// Calculate velocity
