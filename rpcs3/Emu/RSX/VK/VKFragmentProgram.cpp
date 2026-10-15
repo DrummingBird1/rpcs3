@@ -6,6 +6,13 @@
 #include "Emu/system_config.h"
 #include "../Program/GLSLCommon.h"
 
+// The vertex programs only pass the clip distances on MoltenVK, and the control bit can also come from the shader cache
+static bool uses_fragment_clip_planes(u32 ctrl)
+{
+	return (ctrl & RSX_SHADER_CONTROL_FRAGMENT_CLIP_PLANES) && !(ctrl & RSX_SHADER_CONTROL_INTERPRETER_MODEL) &&
+		vk::get_driver_vendor() == vk::driver_vendor::MVK;
+}
+
 std::string VKFragmentDecompilerThread::getFloatTypeName(usz elementCount)
 {
 	return glsl::getFloatTypeNameImpl(elementCount);
@@ -296,6 +303,13 @@ void VKFragmentDecompilerThread::insertConstants(std::stringstream & OS)
 	{
 		OS <<
 			"layout(location=" << vk::get_varying_register_location("usr") << ") in flat uvec4 draw_params_payload;\n\n";
+
+		if (uses_fragment_clip_planes(m_prog.ctrl))
+		{
+			OS <<
+				"layout(location=" << vk::get_varying_register_location("clip_lo") << ") in vec3 _clip_lo;\n"
+				"layout(location=" << vk::get_varying_register_location("clip_hi") << ") in vec3 _clip_hi;\n\n";
+		}
 	}
 
 	if (m_prog.ctrl & RSX_SHADER_CONTROL_EMULATE_DEPTH_RANGE)
@@ -424,6 +438,7 @@ void VKFragmentDecompilerThread::insertGlobalFunctions(std::stringstream &OS)
 	m_shader_props.require_alpha_kill = !!(m_prog.ctrl & RSX_SHADER_CONTROL_TEXTURE_ALPHA_KILL);
 	m_shader_props.require_color_format_convert = !!(m_prog.ctrl & RSX_SHADER_CONTROL_TEXTURE_FORMAT_CONVERT);
 	m_shader_props.emulate_depth_compare = !!(m_prog.ctrl & RSX_SHADER_CONTROL_EMULATE_DEPTH_COMPARE);
+	m_shader_props.fragment_clip_planes = uses_fragment_clip_planes(m_prog.ctrl);
 	m_shader_props.ROP_output_multisampled = !!(m_prog.ctrl & RSX_SHADER_CONTROL_ROP_MULTISAMPLED);
 	m_shader_props.ROP_emulate_depth_range = !!(m_prog.ctrl & RSX_SHADER_CONTROL_EMULATE_DEPTH_RANGE);
 	m_shader_props.ROP_depth_export = !!(m_prog.ctrl & CELL_GCM_SHADER_CONTROL_DEPTH_EXPORT) && m_shader_props.ROP_emulate_depth_range;

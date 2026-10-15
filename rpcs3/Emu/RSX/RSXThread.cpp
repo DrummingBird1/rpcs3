@@ -126,6 +126,7 @@ namespace rsx
 
 	constexpr u32 fs_export_config_mask =
 		RSX_SHADER_CONTROL_EMULATE_DEPTH_COMPARE |
+		RSX_SHADER_CONTROL_FRAGMENT_CLIP_PLANES |
 		RSX_SHADER_CONTROL_ROP_MULTISAMPLED |
 		RSX_SHADER_CONTROL_PROGRAMMABLE_BLENDING |
 		RSX_SHADER_CONTROL_EMULATE_DEPTH_RANGE;
@@ -2186,6 +2187,12 @@ namespace rsx
 			expected_ctrl |= RSX_SHADER_CONTROL_EMULATE_DEPTH_RANGE;
 		}
 
+		// User clip planes
+		if (backend_config.requires_fragment_clip_planes && REGS(m_ctx)->clip_planes_mask() != 0)
+		{
+			expected_ctrl |= RSX_SHADER_CONTROL_FRAGMENT_CLIP_PLANES;
+		}
+
 		// Depth compare
 		if (!g_cfg.video.emulate_depth_compare) [[ likely ]]
 		{
@@ -2616,7 +2623,7 @@ namespace rsx
 				{
 					m_graphics_state |= rsx::zeta_address_is_cyclic;
 
-					if (!(current_fragment_program.ctrl & (CELL_GCM_SHADER_CONTROL_DEPTH_EXPORT | RSX_SHADER_CONTROL_META_USES_DISCARD | RSX_SHADER_CONTROL_EMULATE_DEPTH_COMPARE)) &&
+					if (!(current_fragment_program.ctrl & (CELL_GCM_SHADER_CONTROL_DEPTH_EXPORT | RSX_SHADER_CONTROL_META_USES_DISCARD | RSX_SHADER_CONTROL_EMULATE_DEPTH_COMPARE | RSX_SHADER_CONTROL_FRAGMENT_CLIP_PLANES)) &&
 						m_framebuffer_layout.zeta_write_enabled)
 					{
 						current_fragment_program.ctrl |= RSX_SHADER_CONTROL_DISABLE_EARLY_Z;

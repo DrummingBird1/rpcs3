@@ -320,6 +320,13 @@ void VKVertexDecompilerThread::insertOutputs(std::stringstream& OS, const std::v
 	if (!(m_prog.ctrl & RSX_SHADER_CONTROL_INTERPRETER_MODEL))
 	{
 		OS << "layout(location=" << vk::get_varying_register_location("usr") << ") out flat uvec4 draw_params_payload;\n";
+
+		if (vk::get_driver_vendor() == vk::driver_vendor::MVK)
+		{
+			// User clip distances are passed to the fragment program instead of gl_ClipDistance (see VKGSRender)
+			OS << "layout(location=" << vk::get_varying_register_location("clip_lo") << ") out vec3 _clip_lo;\n";
+			OS << "layout(location=" << vk::get_varying_register_location("clip_hi") << ") out vec3 _clip_hi;\n";
+		}
 	}
 
 	if (m_prog.ctrl & RSX_SHADER_CONTROL_EMULATE_DEPTH_RANGE)
@@ -446,8 +453,23 @@ void VKVertexDecompilerThread::insertMainEnd(std::stringstream& OS)
 	// FS payload
 	OS << "write_fs_payload();\n\n";
 
-	for (auto &i : reg_table)
+	const bool fragment_clip_planes = !(m_prog.ctrl & RSX_SHADER_CONTROL_INTERPRETER_MODEL) && vk::get_driver_vendor() == vk::driver_vendor::MVK;
+	if (fragment_clip_planes)
 	{
+		// Distances the program does not write stay inside, like the disabled planes
+		OS << "	_clip_lo = vec3(0.5);\n";
+		OS << "	_clip_hi = vec3(0.5);\n";
+	}
+
+	for (const auto &entry : reg_table)
+	{
+		auto i = entry;
+		if (fragment_clip_planes && i.name.starts_with("gl_ClipDistance["))
+		{
+			const int plane = i.name[16] - '0';
+			i.name = fmt::format("%s.%c", plane < 3 ? "_clip_lo" : "_clip_hi", "xyz"[plane % 3]);
+		}
+
 		if (!i.check_mask || i.test(rsx_vertex_program.output_mask))
 		{
 			if (m_parr.HasParam(PF_PARAM_OUT, "vec4", i.src_reg))

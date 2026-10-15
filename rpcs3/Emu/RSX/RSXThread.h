@@ -95,6 +95,7 @@ namespace rsx
 		bool supports_programmable_blending;     // Can handle programmable blending requests
 		bool supports_extended_depth_range;      // Depth values above 1 can be stored and tested. Float depth targets are emulated otherwise.
 		bool supports_framebufferless_rendering; // Can rasterize without any attachments bound (e.g for occlusion queries)
+		bool requires_fragment_clip_planes;      // Host clipping changes the depth of clipped triangles; test user clip planes per fragment
 	};
 
 	struct desync_fifo_cmd_info

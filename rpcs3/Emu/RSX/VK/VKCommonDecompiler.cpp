@@ -4,7 +4,7 @@
 
 namespace vk
 {
-	static constexpr std::array<std::pair<std::string_view, int>, 18> varying_registers =
+	static constexpr std::array<std::pair<std::string_view, int>, 20> varying_registers =
 	{ {
 		{ "tc0", 0 },
 		{ "tc1", 1 },
@@ -24,6 +24,8 @@ namespace vk
 		{ "fogc", 14 },
 		{ "usr", 15 }, // custom injected stuff
 		{ "depth_range", 17 }, // clip range for depth range emulation; 16 is used by the shader interpreter
+		{ "clip_lo", 18 }, // User clip distances 0-2 when tested per fragment
+		{ "clip_hi", 19 }, // User clip distances 3-5
 	} };
 
 	int get_varying_register_location(std::string_view varying_register_name)
