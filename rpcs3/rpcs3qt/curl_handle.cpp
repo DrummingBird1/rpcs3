@@ -34,6 +34,20 @@ curl_handle::curl_handle()
 	// Tell curl to use the native CA store for certificate verification
 	err = curl_easy_setopt(m_curl, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NATIVE_CA);
 	if (err != CURLE_OK) network_log.error("curl_easy_setopt(CURLOPT_SSL_OPTIONS): %s", curl_easy_strerror(err));
+#elif defined(__APPLE__)
+	// The bundled libcurl may carry the CA bundle path of the machine it was built on (e.g. MacPorts' /opt/local/share/curl/curl-ca-bundle.crt).
+	// That file usually does not exist on user systems, so fall back to the CA bundle that ships with macOS.
+	if (const curl_version_info_data* info = curl_version_info(CURLVERSION_NOW);
+		info && info->age >= CURLVERSION_SEVENTH && info->cainfo && !fs::is_file(info->cainfo))
+	{
+		constexpr auto system_ca_bundle = "/etc/ssl/cert.pem";
+
+		if (fs::is_file(system_ca_bundle))
+		{
+			err = curl_easy_setopt(m_curl, CURLOPT_CAINFO, system_ca_bundle);
+			if (err != CURLE_OK) network_log.error("curl_easy_setopt(CURLOPT_CAINFO, %s): %s", system_ca_bundle, curl_easy_strerror(err));
+		}
+	}
 #endif
 
 	const std::string user_agent = utils::get_user_agent();
