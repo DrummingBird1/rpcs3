@@ -650,7 +650,11 @@ template<typename T> std::string FragmentProgramDecompiler::GetSRC(T src)
 
 			// Opt: Skip emitting w dependency unless w coord is actually being sampled
 			ensure(register_index != umax);
-			const auto lane_mask = FP::get_src_vector_lane_mask_shuffled(m_prog, m_instruction, register_index);
+
+			// Unimplemented instructions (e.g. BEM in corrupted ucode) have no lane info. Assume all lanes are read.
+			const auto lane_mask = FP::is_instruction_valid(static_cast<FP_opcode>(m_instruction->opcode))
+				? FP::get_src_vector_lane_mask_shuffled(m_prog, m_instruction, register_index)
+				: 0b1111u;
 			const auto touches_z = !!(lane_mask & (1u << 2));
 			const bool touches_w = !!(lane_mask & (1u << 3));
 
@@ -1311,7 +1315,7 @@ bool FragmentProgramDecompiler::handle_tex_srb(u32 opcode)
 std::string FragmentProgramDecompiler::Decompile()
 {
 	auto graph = deconstruct_fragment_program(m_prog);
-	m_is_valid_ucode = !graph.has_invalid_flow_control;
+	m_is_valid_ucode = !graph.has_corrupt_ucode;
 
 	if (!graph.blocks.empty())
 	{

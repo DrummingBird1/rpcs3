@@ -189,8 +189,10 @@ namespace rsx::assembler
 			case RSX_FP_OPCODE_BRK:
 				break;
 			case RSX_FP_OPCODE_CAL:
-				// Unimplemented. Also unused by the RSX compiler
-				fmt::throw_exception("Unimplemented FP CAL instruction.");
+				// Unimplemented. Also unused by the RSX compiler, so this is corrupted ucode.
+				rsx_log.error("CFG: Unexpected CAL instruction at L%u. The fragment program is corrupt.", pc);
+				bb->instructions.pop_back();
+				graph.has_corrupt_ucode = true;
 				break;
 			case RSX_FP_OPCODE_FENCT:
 				break;
@@ -210,7 +212,7 @@ namespace rsx::assembler
 					// Flow control only branches forward. This is corrupted ucode (e.g. zeroed offsets) and cannot be structured.
 					rsx_log.error("CFG: IF at L%u branches backwards (else=L%u, end=L%u). The fragment program is corrupt.", pc, else_addr, end_addr);
 					bb->instructions.pop_back();
-					graph.has_invalid_flow_control = true;
+					graph.has_corrupt_ucode = true;
 					break;
 				}
 
@@ -254,7 +256,7 @@ namespace rsx::assembler
 					// Flow control only branches forward. This is corrupted ucode (e.g. zeroed offsets) and cannot be structured.
 					rsx_log.error("CFG: LOOP at L%u branches backwards (end=L%u). The fragment program is corrupt.", pc, end_addr);
 					bb->instructions.pop_back();
-					graph.has_invalid_flow_control = true;
+					graph.has_corrupt_ucode = true;
 					break;
 				}
 
