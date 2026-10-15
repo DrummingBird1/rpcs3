@@ -197,6 +197,14 @@ std::tuple<s32, lv2_socket::sockopt_data, u32> lv2_socket_p2p::getsockopt(s32 le
 {
 	std::lock_guard lock(mutex);
 
+	if (level == SYS_NET_SOL_SOCKET && optname == SYS_NET_SO_ERROR)
+	{
+		// Pending socket error, cleared on read (same as native sockets)
+		sockopt_data out_val{};
+		out_val._int = std::exchange(so_error, 0);
+		return {CELL_OK, out_val, sizeof(s32)};
+	}
+
 	const u64 key = (static_cast<u64>(level) << 32) | static_cast<u64>(optname);
 
 	if (!sockopts.contains(key))
