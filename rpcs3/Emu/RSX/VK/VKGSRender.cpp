@@ -603,6 +603,13 @@ VKGSRender::VKGSRender(utils::serial* ar) noexcept : GSRender(ar)
 	null_buffer = std::make_unique<vk::buffer>(*m_device, 32, memory_map.device_local, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT, 0, VMM_ALLOCATION_POOL_UNDEFINED);
 	null_buffer_view = std::make_unique<vk::buffer_view>(*m_device, null_buffer->value, VK_FORMAT_R8_UINT, 0, 32);
 
+	if (vk::emulate_conditional_rendering())
+	{
+		// Every vertex shader reads the emulated predicate, including draws issued before the first conditional render.
+		// Create the buffer now so those draws read the all-ones word instead of uninitialized scratch memory.
+		create_conditional_render_buffer();
+	}
+
 	// Initialize the shader compiler stack
 	const int preferred_compiler_threads = g_cfg.video.shader_compiler_threads_count == 0
 		? utils::get_thread_count()                   // We spawn the initial pipe compiler with all threads during the boot sequence by default.
@@ -2920,6 +2927,30 @@ void VKGSRender::emergency_query_cleanup(vk::command_buffer* commands)
 	}
 }
 
+void VKGSRender::create_conditional_render_buffer()
+{
+	auto& memory_props = m_device->get_memory_mapping();
+	auto usage_flags = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+	if (m_device->get_conditional_render_support())
+	{
+		usage_flags |= VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT;
+	}
+
+	m_cond_render_buffer = std::make_unique<vk::buffer>(
+		*m_device, 8,
+		memory_props.device_local, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		usage_flags, 0, VMM_ALLOCATION_POOL_UNDEFINED);
+
+	// Fill CR+4 with all-ones. Instead of dynamic flags, just bind the all-ones word to disable CR
+	vkCmdFillBuffer(*m_current_command_buffer, m_cond_render_buffer->value, 4, 4, 0xFFFFFFFFu);
+
+	// Ensure the all-ones mask is written before next VS invocation
+	vk::insert_buffer_memory_barrier(*m_current_command_buffer, m_cond_render_buffer->value, 4, 4,
+		VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+		VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
+}
+
 void VKGSRender::begin_conditional_rendering(const std::vector<rsx::reports::occlusion_query_info*>& sources)
 {
 	ensure(!sources.empty());
@@ -2950,26 +2981,7 @@ void VKGSRender::begin_conditional_rendering(const std::vector<rsx::reports::occ
 	// Time to aggregate
 	if (!m_cond_render_buffer)
 	{
-		auto& memory_props = m_device->get_memory_mapping();
-		auto usage_flags = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-		if (m_device->get_conditional_render_support())
-		{
-			usage_flags |= VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT;
-		}
-
-		m_cond_render_buffer = std::make_unique<vk::buffer>(
-			*m_device, 8,
-			memory_props.device_local, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			usage_flags, 0, VMM_ALLOCATION_POOL_UNDEFINED);
-
-		// Fill CR+4 with all-ones. Instead of dynamic flags, just bind the all-ones word to disable CR
-		vkCmdFillBuffer(*m_current_command_buffer, m_cond_render_buffer->value, 4, 4, 0xFFFFFFFFu);
-
-		// Ensure the all-ones mask is written before next VS invocation
-		vk::insert_buffer_memory_barrier(*m_current_command_buffer, m_cond_render_buffer->value, 4, 4,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
-			VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
+		create_conditional_render_buffer();
 	}
 
 	VkPipelineStageFlags dst_stage;
