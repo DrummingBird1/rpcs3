@@ -487,6 +487,17 @@ namespace vk
 
 			vk::copy_image_to_buffer(cmd, src, scratch_buf, src_copy);
 
+			// Depth/stencil readbacks are packed or converted by a compute pass inside copy_image_to_buffer, which only orders its
+			// writes when given a sync_region. Order them before the scratch buffer is read below.
+			if (src->aspect() & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+			{
+				insert_buffer_memory_barrier(cmd, scratch_buf->value, 0, src_length,
+					VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+					VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+					VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+					VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT);
+			}
+
 			auto src_convert = get_format_convert_flags(src->info.format);
 			auto dst_convert = get_format_convert_flags(dst->info.format);
 			bool require_rw_barrier = true;

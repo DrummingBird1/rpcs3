@@ -650,7 +650,11 @@ template<typename T> std::string FragmentProgramDecompiler::GetSRC(T src)
 
 			// Opt: Skip emitting w dependency unless w coord is actually being sampled
 			ensure(register_index != umax);
-			const auto lane_mask = FP::get_src_vector_lane_mask_shuffled(m_prog, m_instruction, register_index);
+
+			// Unimplemented instructions (e.g. BEM in corrupted ucode) have no lane info. Assume all lanes are read.
+			const auto lane_mask = FP::is_instruction_valid(static_cast<FP_opcode>(m_instruction->opcode))
+				? FP::get_src_vector_lane_mask_shuffled(m_prog, m_instruction, register_index)
+				: 0b1111u;
 			const auto touches_z = !!(lane_mask & (1u << 2));
 			const bool touches_w = !!(lane_mask & (1u << 3));
 
@@ -983,6 +987,19 @@ std::string FragmentProgramDecompiler::BuildCode()
 		"#define _builtin_floor floor\n\n";
 	}
 
+	if (device_props.has_low_precision_interpolation)
+	{
+		// Apple GPUs (MoltenVK) can interpolate a value that lands exactly on an integer boundary a few ulps low,
+		// so fract returns ~1 instead of 0 there (BioShock Infinite colour-grading LUT slice selection)
+		OS <<
+		"#define _builtin_fract(x) fract(x + 0.000001)\n\n";
+	}
+	else
+	{
+		OS <<
+		"#define _builtin_fract fract\n\n";
+	}
+
 	if (properties.has_pkg)
 	{
 		OS <<
@@ -1116,7 +1133,7 @@ bool FragmentProgramDecompiler::handle_sct_scb(u32 opcode)
 	case RSX_FP_OPCODE_REFL: SetDst(getFunction(FUNCTION::REFL), OPFLAGS::op_extern); return true;
 	case RSX_FP_OPCODE_EX2: SetDst("exp2($0.xxxx)"); return true;
 	case RSX_FP_OPCODE_FLR: SetDst("_builtin_floor($0)"); return true;
-	case RSX_FP_OPCODE_FRC: SetDst(getFunction(FUNCTION::FRACT)); return true;
+	case RSX_FP_OPCODE_FRC: SetDst("_builtin_fract($0)"); return true;
 	case RSX_FP_OPCODE_LIT:
 		SetDst("_builtin_lit($0)");
 		properties.has_lit_op = true;
@@ -1298,7 +1315,7 @@ bool FragmentProgramDecompiler::handle_tex_srb(u32 opcode)
 std::string FragmentProgramDecompiler::Decompile()
 {
 	auto graph = deconstruct_fragment_program(m_prog);
-	m_is_valid_ucode = true;
+	m_is_valid_ucode = !graph.has_corrupt_ucode;
 
 	if (!graph.blocks.empty())
 	{

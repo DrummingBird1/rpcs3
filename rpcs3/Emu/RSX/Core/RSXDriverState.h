@@ -46,6 +46,8 @@ namespace rsx
 
 		blend_config_dirty            = (1 << 29), // Blending configuration has been updated. Only matters when programmable blending is in use.
 
+		rtt_config_missing_color      = (1 << 30), // Render target configuration did not bind every color target of the MRT setup
+
 		// TODO - Should signal that we simply need to do a FP compare before the next draw call and invalidate the ucode if the content has changed.
 		// Marking as dirty to invalidate hot cache also works, it's not like there's tons of barriers per frame anyway.
 		fragment_program_needs_rehash = fragment_program_ucode_dirty,

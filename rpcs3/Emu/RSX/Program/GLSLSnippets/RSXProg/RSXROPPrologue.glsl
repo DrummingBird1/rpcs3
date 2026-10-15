@@ -1,5 +1,13 @@
 R"(
 
+#ifdef _ENABLE_FRAGMENT_CLIP_PLANES
+	// User clip planes tested here instead of by the host clipper, which would change the depth of clipped triangles
+	if (any(lessThan(_clip_lo, vec3(0.))) || any(lessThan(_clip_hi, vec3(0.))))
+	{
+		discard;
+	}
+#endif
+
 #ifdef _ENABLE_POLYGON_STIPPLE
 	// Convert x,y to linear address
 	const uvec2 stipple_coord = uvec2(gl_FragCoord.xy) % uvec2(32, 32);

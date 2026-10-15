@@ -1404,7 +1404,8 @@ iso_fs_node* iso_archive::retrieve(const std::string& path)
 
 		bool found = false;
 
-		if (path_component == ".")
+		// Empty components come from repeated delimiters (e.g. a mount path ending with '/' joined with "/PIC1.PNG")
+		if (path_component.empty() || path_component == ".")
 		{
 			found = true;
 		}

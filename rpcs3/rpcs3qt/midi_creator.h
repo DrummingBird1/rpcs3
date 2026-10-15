@@ -25,8 +25,13 @@ public:
 	const std::array<midi_device, max_midi_devices>& get_selection_list() const;
 
 private:
+	struct thread_joiner
+	{
+		void operator()(std::thread* thread) const;
+	};
+
 	static std::mutex m_midi_init_mutex;
-	static std::unique_ptr<std::thread> m_midi_init_thread;
+	static std::unique_ptr<std::thread, thread_joiner> m_midi_init_thread;
 	QStringList m_midi_list;
 	std::array<midi_device, max_midi_devices> m_sel_list;
 };

@@ -273,6 +273,11 @@ namespace glsl
 				enabled_options.push_back("_ENABLE_POLYGON_STIPPLE");
 			}
 
+			if (props.fragment_clip_planes)
+			{
+				enabled_options.push_back("_ENABLE_FRAGMENT_CLIP_PLANES");
+			}
+
 			if (props.emulate_depth_compare)
 			{
 				enabled_options.push_back("_ENABLE_DEPTH_COMPARE");

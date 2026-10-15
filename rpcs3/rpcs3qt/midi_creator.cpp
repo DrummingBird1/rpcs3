@@ -12,7 +12,19 @@ inline constexpr auto midi_deleter = [](RtMidiWrapper* ptr) { if (ptr) rtmidi_in
 using midi_ptr = std::unique_ptr<RtMidiWrapper, decltype(midi_deleter)>;
 
 std::mutex midi_creator::m_midi_init_mutex = {};
-std::unique_ptr<std::thread> midi_creator::m_midi_init_thread = {};
+std::unique_ptr<std::thread, midi_creator::thread_joiner> midi_creator::m_midi_init_thread = {};
+
+void midi_creator::thread_joiner::operator()(std::thread* thread) const
+{
+	// The static thread outlives every midi_creator if the process exits without unwinding (e.g. Quit on macOS calls exit()).
+	// Destroying a joinable std::thread calls std::terminate, so join it here.
+	if (thread->joinable())
+	{
+		thread->join();
+	}
+
+	delete thread;
+}
 
 midi_creator::midi_creator()
 {
@@ -22,10 +34,10 @@ midi_creator::midi_creator()
 	std::lock_guard lock(m_midi_init_mutex);
 	if (!m_midi_init_thread)
 	{
-		m_midi_init_thread = std::make_unique<std::thread>([]
+		m_midi_init_thread.reset(new std::thread([]
 		{
 			[[maybe_unused]] midi_ptr midi_in(rtmidi_in_create_default());
-		});
+		}));
 	}
 }
 
