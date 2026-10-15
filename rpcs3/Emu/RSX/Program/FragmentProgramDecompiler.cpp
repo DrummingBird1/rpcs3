@@ -983,6 +983,19 @@ std::string FragmentProgramDecompiler::BuildCode()
 		"#define _builtin_floor floor\n\n";
 	}
 
+	if (device_props.has_low_precision_interpolation)
+	{
+		// Apple GPUs (MoltenVK) can interpolate a value that lands exactly on an integer boundary a few ulps low,
+		// so fract returns ~1 instead of 0 there (BioShock Infinite colour-grading LUT slice selection)
+		OS <<
+		"#define _builtin_fract(x) fract(x + 0.000001)\n\n";
+	}
+	else
+	{
+		OS <<
+		"#define _builtin_fract fract\n\n";
+	}
+
 	if (properties.has_pkg)
 	{
 		OS <<
@@ -1116,7 +1129,7 @@ bool FragmentProgramDecompiler::handle_sct_scb(u32 opcode)
 	case RSX_FP_OPCODE_REFL: SetDst(getFunction(FUNCTION::REFL), OPFLAGS::op_extern); return true;
 	case RSX_FP_OPCODE_EX2: SetDst("exp2($0.xxxx)"); return true;
 	case RSX_FP_OPCODE_FLR: SetDst("_builtin_floor($0)"); return true;
-	case RSX_FP_OPCODE_FRC: SetDst(getFunction(FUNCTION::FRACT)); return true;
+	case RSX_FP_OPCODE_FRC: SetDst("_builtin_fract($0)"); return true;
 	case RSX_FP_OPCODE_LIT:
 		SetDst("_builtin_lit($0)");
 		properties.has_lit_op = true;

@@ -636,6 +636,7 @@ void VKFragmentProgram::Decompile(const RSXFragmentProgram& prog)
 	decompiler.device_props.emulate_depth_compare = !pdev->get_formats_support().d24_unorm_s8;
 	decompiler.device_props.emulated_depth_storage = vk::emulate_extended_depth_range();
 	decompiler.device_props.has_low_precision_rounding = vk::is_NVIDIA(vk::get_driver_vendor());
+	decompiler.device_props.has_low_precision_interpolation = vk::get_driver_vendor() == vk::driver_vendor::MVK;
 	decompiler.Task();
 
 	constant_offsets = std::move(decompiler.properties.constant_offsets);
