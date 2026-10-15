@@ -1821,6 +1821,32 @@ namespace rsx
 			m_graphics_state.set(rsx::pipeline_config_dirty);
 		}
 
+		// Programmable blending also reads back from every MRT color target, so it needs all of them to be bound.
+		// Color targets can be dropped above (color writes disabled, failed pitch check, aliasing with the depth buffer).
+		bool missing_color = false;
+		for (const auto& index : rsx::utility::get_rtt_indexes(layout.target))
+		{
+			if (!layout.color_addresses[index])
+			{
+				missing_color = true;
+				break;
+			}
+		}
+
+		if (missing_color != m_graphics_state.test(rsx::rtt_config_missing_color))
+		{
+			if (missing_color)
+			{
+				m_graphics_state.set(rsx::rtt_config_missing_color);
+			}
+			else
+			{
+				m_graphics_state.clear(rsx::rtt_config_missing_color);
+			}
+
+			m_graphics_state.set(rsx::pipeline_config_dirty);
+		}
+
 		// At least one attachment exists
 		m_graphics_state.set(rsx::rtt_config_valid);
 
@@ -2164,7 +2190,8 @@ namespace rsx
 
 		// Programmable blending. Requires color attachments to read from.
 		if (backend_config.supports_programmable_blending &&
-			!m_graphics_state.test(rsx::rtt_config_no_attachments))
+			!m_graphics_state.test(rsx::rtt_config_no_attachments) &&
+			!m_graphics_state.test(rsx::rtt_config_missing_color))
 		{
 			expected_ctrl = current_fragment_program.ctrl & RSX_SHADER_CONTROL_PROGRAMMABLE_BLENDING;
 
