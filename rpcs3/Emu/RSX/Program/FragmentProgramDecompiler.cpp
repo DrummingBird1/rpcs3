@@ -1311,7 +1311,7 @@ bool FragmentProgramDecompiler::handle_tex_srb(u32 opcode)
 std::string FragmentProgramDecompiler::Decompile()
 {
 	auto graph = deconstruct_fragment_program(m_prog);
-	m_is_valid_ucode = true;
+	m_is_valid_ucode = !graph.has_invalid_flow_control;
 
 	if (!graph.blocks.empty())
 	{

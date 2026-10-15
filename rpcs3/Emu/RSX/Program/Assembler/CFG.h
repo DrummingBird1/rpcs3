@@ -12,6 +12,7 @@ namespace rsx::assembler
 	struct FlowGraph
 	{
 		std::list<BasicBlock> blocks;
+		bool has_invalid_flow_control = false;
 
 		BasicBlock* push(BasicBlock* parent = nullptr, u32 pc = 0, EdgeType edge_type = EdgeType::NONE)
 		{

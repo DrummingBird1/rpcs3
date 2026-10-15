@@ -205,6 +205,15 @@ namespace rsx::assembler
 				// Inserts if and else and end blocks
 				const u32 end_addr = src2.end_offset >> 2u;
 				const u32 else_addr = src1.else_offset >> 2u;
+				if (end_addr <= pc || else_addr <= pc)
+				{
+					// Flow control only branches forward. This is corrupted ucode (e.g. zeroed offsets) and cannot be structured.
+					rsx_log.error("CFG: IF at L%u branches backwards (else=L%u, end=L%u). The fragment program is corrupt.", pc, else_addr, end_addr);
+					bb->instructions.pop_back();
+					graph.has_invalid_flow_control = true;
+					break;
+				}
+
 				if (end_addr == pc + 1u)
 				{
 					// NOP. Empty IF block
@@ -240,6 +249,15 @@ namespace rsx::assembler
 			{
 				// Inserts for and end blocks
 				const u32 end_addr = src2.end_offset >> 2u;
+				if (end_addr <= pc)
+				{
+					// Flow control only branches forward. This is corrupted ucode (e.g. zeroed offsets) and cannot be structured.
+					rsx_log.error("CFG: LOOP at L%u branches backwards (end=L%u). The fragment program is corrupt.", pc, end_addr);
+					bb->instructions.pop_back();
+					graph.has_invalid_flow_control = true;
+					break;
+				}
+
 				if (end_addr == pc + 1u)
 				{
 					// NOP. Empty LOOP block
