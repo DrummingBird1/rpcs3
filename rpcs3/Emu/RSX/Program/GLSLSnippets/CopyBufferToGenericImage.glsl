@@ -174,14 +174,19 @@ void main()
 	case FMT_GL_DEPTH24_STENCIL8:
 	case FMT_GL_DEPTH32F_STENCIL8:
 		utmp2 = readUint24_8(texel_address);
-#if EMULATED_DEPTH_STORAGE
 		if (depth_float != 0)
 		{
+			// D24FS8. Expand the 24-bit float (E8M16) to IEEE single precision
+#if EMULATED_DEPTH_STORAGE
 			gl_FragDepth = encodeDepth(uintBitsToFloat(utmp2.x << 7));
+#else
+			gl_FragDepth = uintBitsToFloat(utmp2.x << 7);
+#endif
 		}
 		else
-#endif
-		gl_FragDepth = float(utmp2.x) / 0xffffff;
+		{
+			gl_FragDepth = float(utmp2.x) / 0xffffff;
+		}
 		gl_FragStencilRefARB = int(utmp2.y);
 		break;
 
