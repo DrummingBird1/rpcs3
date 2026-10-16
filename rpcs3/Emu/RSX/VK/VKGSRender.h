@@ -239,6 +239,8 @@ private:
 	void update_draw_state();
 	void check_present_status();
 
+	void create_conditional_render_buffer();
+
 	vk::vertex_upload_info upload_vertex_data();
 	rsx::simple_array<u8> m_scratch_mem;
 

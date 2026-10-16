@@ -913,7 +913,20 @@ namespace rsx
 
 			if (m_pages_accessed[location])
 			{
-				// Already faulted, no locks possible
+				// Already faulted, no new locks possible.
+				// The pages may still be locked while the faulting thread waits for the RSX to pause before unlocking them.
+				// If this is a late fault from the RSX itself (e.g. a semaphore sharing a 16K host page with reports), declining it retries forever.
+				// Unlock the page here instead. disable_optimizations skips pages that are already R/W and still marks their reports as critical.
+				std::scoped_lock lock(m_pages_mutex);
+
+				if (auto found = m_locked_pages[location].find(page_address);
+					found != m_locked_pages[location].end() && found->second.prot != utils::protection::rw)
+				{
+					utils::memory_protect(vm::base(page_address), utils::get_page_size(), utils::protection::rw);
+					found->second.prot = utils::protection::rw;
+					return true;
+				}
+
 				return false;
 			}
 

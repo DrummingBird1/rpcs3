@@ -334,6 +334,8 @@ error_code sys_spu_image_import(ppu_thread& ppu, vm::ptr<sys_spu_image> img, u32
 		img->nsegs       = num_segs;
 		img->entry_point = static_cast<u32>(ehdr->e_entry);
 
+		ppu.state += cpu_flag::wait; // For vm::alloc/vm::dealloc (vm::writer_lock)
+
 		vm::ptr<sys_spu_segment> segs = vm::cast(vm::alloc(num_segs * sizeof(sys_spu_segment), vm::main));
 
 		if (!segs)
@@ -359,6 +361,8 @@ error_code sys_spu_image_close(ppu_thread& ppu, vm::ptr<sys_spu_image> img)
 
 	if (img->type == SYS_SPU_IMAGE_TYPE_USER)
 	{
+		ppu.state += cpu_flag::wait; // For vm::dealloc (vm::writer_lock)
+
 		//_sys_free(img->segs.addr());
 		vm::dealloc(img->segs.addr(), vm::main);
 	}

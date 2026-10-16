@@ -3866,6 +3866,10 @@ public:
 		fpm.addPass(createFunctionToLoopPassAdaptor(LICMPass(LICMOptions()), true));
 		fpm.addPass(ADCEPass());
 
+		// Function names are only unique within a module, and this worker can compile the same SPU program again.
+		// Transform passes that remember visited functions (AArch64 GHC frame pass) must not skip the new module's functions.
+		reset_transforms();
+
 		for (auto& f : *m_module)
 		{
 			run_transforms(f);
@@ -4414,6 +4418,8 @@ public:
 
 		m_function_table->setInitializer(ConstantArray::get(ArrayType::get(get_type<u8*>(), 1ull << m_interp_magn), iptrs));
 		m_function_table = nullptr;
+
+		reset_transforms();
 
 		for (auto& f : *_module)
 		{

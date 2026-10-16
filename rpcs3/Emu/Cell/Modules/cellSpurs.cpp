@@ -2726,6 +2726,8 @@ s32 cellSpursRemoveWorkload(ppu_thread& ppu, vm::ptr<CellSpurs> spurs, u32 wid)
 		ensure(ppu_execute<&_cellSpursWorkloadFlagReceiver>(ppu, spurs, wid, 0) == 0);
 	}
 
+	ppu.state += cpu_flag::wait;
+
 	s32 rc;
 	vm::reservation_op(ppu, vm::unsafe_ptr_cast<spurs_wkl_state_op>(spurs.ptr(&CellSpurs::wklState1)), [&](spurs_wkl_state_op& op)
 	{
