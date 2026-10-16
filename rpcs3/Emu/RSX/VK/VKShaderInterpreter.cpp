@@ -195,6 +195,9 @@ namespace vk
 		// Initialize compiler properties
 		comp.properties.has_indexed_constants = true;
 
+		// Normally set by Task(), which is not used here. init() reserves the predicate binding, so the header must declare it.
+		comp.m_device_props.emulate_conditional_rendering = vk::emulate_conditional_rendering();
+
 		ParamType uniforms = { PF_PARAM_UNIFORM, "vec4" };
 		uniforms.items.emplace_back("vc[468]", -1);
 

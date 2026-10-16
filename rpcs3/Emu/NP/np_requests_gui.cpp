@@ -564,6 +564,20 @@ namespace np
 		ctx->queue_callback(req_id, SCE_NP_MATCHING_EVENT_GET_ROOM_INFO_DONE, 0);
 	}
 
+	error_code np_handler::invitation_gui(u32 ctx_id, s32 event, vm::ptr<SceNpMatchingGUIHandler> handler, vm::ptr<void> arg)
+	{
+		const auto [error, ctx] = gui_prelude(ctx_id, handler, arg);
+
+		if (error)
+			return error;
+
+		// Invitations are not supported yet. Report the operation as canceled, the game waits for the GUI events otherwise.
+		ctx->queue_gui_callback(event, SCE_NP_MATCHING_ERROR_CANCELED);
+		gui_epilog(ctx);
+
+		return CELL_OK;
+	}
+
 	error_code np_handler::quickmatch_gui(u32 ctx_id, vm::cptr<SceNpCommunicationId> communicationId, vm::cptr<SceNpMatchingSearchCondition> cond, s32 available_num, s32 timeout, vm::ptr<SceNpMatchingGUIHandler> handler, vm::ptr<void> arg)
 	{
 		auto [error, ctx] = gui_prelude(ctx_id, handler, arg);

@@ -1154,9 +1154,11 @@ static NEVER_INLINE error_code savedata_op(ppu_thread& ppu, u32 operation, u32 v
 			{
 				if (!listSet->newData)
 				{
-					// ****** sysutil savedata parameter error : 34 ******
-					cellSaveData.error("savedata_op(): listSet->newData is null while listSet->focusPosition is NEWDATA");
-					return {CELL_SAVEDATA_ERROR_PARAM, "34"};
+					// No new data entry is listed, e.g. when the game hides it after reaching its save limit (God of War III, Cars Race-O-Rama).
+					// Real hardware still opens the list in this case, so focus the list head instead of failing.
+					cellSaveData.warning("savedata_op(): listSet->newData is null while listSet->focusPosition is NEWDATA. Focusing the list head.");
+					focused = save_entries.empty() ? -1 : 0;
+					break;
 				}
 
 				if (listSet->newData->iconPosition == CELL_SAVEDATA_ICONPOS_TAIL)
