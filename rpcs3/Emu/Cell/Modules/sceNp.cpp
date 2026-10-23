@@ -4999,9 +4999,8 @@ error_code sceNpMatchingSendInvitationGUI(u32 ctx_id, vm::cptr<SceNpRoomId> room
 	if (false) // TODO
 		return SCE_NP_MATCHING_ERROR_BUSY;
 
-	// TODO: set callback: handler + arg
-
-	err = CELL_OK; // SendInvitation
+	// TODO: Implement the invitation dialog. The GUI handler has to be called either way.
+	err = nph.invitation_gui(ctx_id, SCE_NP_MATCHING_GUI_EVENT_SEND_INVITATION, handler, arg); // SendInvitation
 	if (err != CELL_OK && static_cast<u32>(err) != SCE_NP_MATCHING_ERROR_BUSY)
 	{
 		// TODO ?
@@ -5025,9 +5024,8 @@ error_code sceNpMatchingAcceptInvitationGUI(u32 ctx_id, vm::cptr<SceNpCommunicat
 	if (false) // TODO
 		return SCE_NP_MATCHING_ERROR_BUSY;
 
-	// TODO: set callback: handler + arg
-
-	error_code err = CELL_OK; // AcceptInvitation
+	// TODO: Implement the invitation dialog. The GUI handler has to be called either way.
+	error_code err = nph.invitation_gui(ctx_id, SCE_NP_MATCHING_GUI_EVENT_ACCEPT_INVITATION, handler, arg); // AcceptInvitation
 	if (err != CELL_OK && static_cast<u32>(err) != SCE_NP_MATCHING_ERROR_BUSY)
 	{
 		// TODO ?

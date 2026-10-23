@@ -189,17 +189,22 @@ public:
 			std::string path;
 			bool automatic = false;
 			bool no_more_tracks = false;
+			bool end_of_playback = false;
 			{
 				std::lock_guard lock(mtx);
 
 				// Handle auto-play of the next track in the current playlist.
 				if (command == CELL_MUSIC_PB_CMD_NEXT_TRACK)
 				{
-					// We only auto-play the next song if we are in list mode and the music is playing.
-					if (current_selection_context.content_type != CELL_SEARCH_CONTENTTYPE_MUSICLIST || handler->get_state() != CELL_MUSIC_PB_STATUS_PLAY)
+					// We only auto-play the next song if the music is playing.
+					if (handler->get_state() != CELL_MUSIC_PB_STATUS_PLAY)
 					{
 						return CELL_OK;
 					}
+
+					// We only auto-play the next song if we are in list mode.
+					// Otherwise the track has ended and the game has to be notified that the playback stopped (PES 2013 picks the next track itself).
+					end_of_playback = current_selection_context.content_type != CELL_SEARCH_CONTENTTYPE_MUSICLIST;
 
 					command = CELL_MUSIC_PB_CMD_NEXT;
 					automatic = true;
@@ -209,7 +214,11 @@ public:
 				const u32 current_track = current_selection_context.current_track;
 				u32 next_track = current_track;
 
-				if (command == CELL_MUSIC_PB_CMD_NEXT || command == CELL_MUSIC_PB_CMD_PREV)
+				if (end_of_playback)
+				{
+					next_track = umax;
+				}
+				else if (command == CELL_MUSIC_PB_CMD_NEXT || command == CELL_MUSIC_PB_CMD_PREV)
 				{
 					next_track = current_selection_context.step_track(command == CELL_MUSIC_PB_CMD_NEXT);
 				}
@@ -229,6 +238,14 @@ public:
 			if (no_more_tracks)
 			{
 				cellMusic.notice("set_playback_command: no more tracks to play");
+
+				if (automatic)
+				{
+					// The playback reached its end. Update the playback status and notify the game.
+					handler->stop();
+					return CELL_OK;
+				}
+
 				return CELL_MUSIC_ERROR_NO_MORE_CONTENT;
 			}
 

@@ -17,6 +17,9 @@ namespace rsx
 {
 	namespace helpers = rsx::texture_cache_helpers;
 
+	// Set while the texture cache handles a Cell access to protected memory (the access violation or its deferred flush)
+	inline thread_local bool g_tls_cell_fault_flush = false;
+
 	template <typename derived_type, typename _traits>
 	class texture_cache
 	{
@@ -841,6 +844,16 @@ namespace rsx
 			for (auto &surface : data.sections_to_flush)
 			{
 				surface->flush();
+
+				if (g_tls_cell_fault_flush &&
+					surface->get_context() == texture_upload_context::framebuffer_storage &&
+					rsx::classify_location(surface->get_section_base()) == CELL_GCM_LOCATION_MAIN)
+				{
+					// The pages are unprotected after this flush, so Cell can write to them without faulting.
+					// The memory tag only samples a few words and can miss such writes, keeping the stale surface in use.
+					// Invalidate the tag so that the next GPU read of this memory loads it from guest memory.
+					surface->get_render_target()->shuffle_tag();
+				}
 
 				// Exclude this region when flushing other sections that should not trample it
 				// If we overlap an excluded RO, set it as dirty
@@ -2141,7 +2154,11 @@ namespace rsx
 				return{};
 
 			std::lock_guard lock(m_cache_mutex);
-			return invalidate_range_impl_base(cmd, range, cause, on_data_transfer_completed, std::forward<Args>(extras)...);
+
+			const bool was_cell_fault_flush = std::exchange(g_tls_cell_fault_flush, true);
+			auto result = invalidate_range_impl_base(cmd, range, cause, on_data_transfer_completed, std::forward<Args>(extras)...);
+			g_tls_cell_fault_flush = was_cell_fault_flush;
+			return result;
 		}
 
 		template <typename ...Args>
@@ -2168,6 +2185,8 @@ namespace rsx
 			AUDIT(data.cause.deferred_flush());
 			AUDIT(!data.flushed);
 
+			const bool was_cell_fault_flush = std::exchange(g_tls_cell_fault_flush, true);
+
 			if (m_cache_update_tag.load() == data.cache_tag)
 			{
 				//1. Write memory to cpu side
@@ -2182,6 +2201,7 @@ namespace rsx
 				invalidate_range_impl_base(cmd, data.fault_range, data.cause.undefer(), on_data_transfer_completed, std::forward<Args>(extras)...);
 			}
 
+			g_tls_cell_fault_flush = was_cell_fault_flush;
 			return true;
 		}
 

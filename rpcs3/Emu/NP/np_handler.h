@@ -204,6 +204,7 @@ namespace np
 		error_code get_room_info_gui(u32 ctx_id, vm::ptr<SceNpLobbyId> lobby_id, vm::ptr<SceNpRoomId> room_id, vm::ptr<SceNpMatchingAttr> attr);
 		error_code quickmatch_gui(u32 ctx_id, vm::cptr<SceNpCommunicationId> communicationId, vm::cptr<SceNpMatchingSearchCondition> cond, s32 available_num, s32 timeout, vm::ptr<SceNpMatchingGUIHandler> handler, vm::ptr<void> arg);
 		error_code searchjoin_gui(u32 ctx_id, vm::cptr<SceNpCommunicationId> communicationId, vm::cptr<SceNpMatchingSearchCondition> cond, vm::cptr<SceNpMatchingAttr> attr, vm::ptr<SceNpMatchingGUIHandler> handler, vm::ptr<void> arg);
+		error_code invitation_gui(u32 ctx_id, s32 event, vm::ptr<SceNpMatchingGUIHandler> handler, vm::ptr<void> arg);
 
 		void set_current_gui_ctx_id(u32 id);
 

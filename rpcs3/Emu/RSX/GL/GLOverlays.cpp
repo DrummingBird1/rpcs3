@@ -596,10 +596,12 @@ namespace gl
 		program_handle.uniforms["swap_bytes"] = layout.swap_bytes;
 		program_handle.uniforms["format"] = static_cast<GLenum>(dst->image()->get_internal_format());
 
-		if (gl::emulate_extended_depth_range())
+		if (gl::get_driver_caps().ARB_shader_stencil_export_supported)
 		{
+			// Only read by the depth-stencil decoders, which are compiled out without stencil export
 			program_handle.uniforms["depth_float"] = (dst->image()->format_class() & RSX_FORMAT_CLASS_DEPTH_FLOAT_MASK) ? 1u : 0u;
 		}
+
 		src->bind_range(gl::buffer::target::ssbo, GL_COMPUTE_BUFFER_SLOT(0), src_offset, row_length * bpp * dst_region.height);
 
 		cmd->stencil_mask(0xFF);
